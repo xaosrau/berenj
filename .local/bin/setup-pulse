@@ -1,0 +1,15 @@
+#!/bin/bash
+
+PULSE_FILE="/mnt/c/pulseaudio/etc/pulse/default.pa"
+PULSE_IP=$(ip a | grep "inet " | grep "eth0" | awk '{print $2}')
+REPLACE="load-module module-native-protocol-tcp auth-ip-acl=$PULSE_IP auth-anonymous=1"
+
+echo $PULSE_FILE
+echo $PULSE_IP
+echo $REPLACE
+
+if test -f "$PULSE_FILE"; then
+    echo yes
+    sed -i "61s|.*|$REPLACE|" $PULSE_FILE
+else echo no
+fi

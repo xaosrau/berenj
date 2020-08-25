@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# startup file for dwm
+
+# set wallpaper
+bgloc="${XDG_DATA_HOME:-$HOME/.local/share/}/bg"
+xwallpaper --zoom "$bgloc"
+
+# handles transparency
+xcompmgr &
+
+# launch dwm
+exec $HOME/.local/bin/dwm-start & 2>/dev/null

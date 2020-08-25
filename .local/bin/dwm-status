@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Status script for dwm
+# colours: 01:normal 02:white 03:red 04:green 05:yellow 06:blue
+# 07:cyan 08:magenta 09:grey
+
+# Copyright (c) 2013-2020 Jason W Ryan
+# The MIT License (MIT) http://opensource.org/licenses/MIT
+
+
+music(){
+  track="$(mpc current)"
+  artist="${track%%- *}"
+  title="${track#*- }"
+  [[ -n $artist ]] && printf "%b" "\x06$artist\x01\x08$title\x01 •"
+}
+
+bat(){
+  onl="$(</sys/class/power_supply/ADP1/online)"
+  charge="$(</sys/class/power_supply/BAT1/capacity)"
+  if [[ $onl -eq 0 && $charge -ge 15 ]]; then
+    printf "%b" "BAT \x04$charge%\x01"
+  elif [[ $onl -eq 0 && $charge -le 14 ]]; then
+    printf "%b" "BAT \x03$charge%\x01"
+  else
+    printf "%b" "AC \x06$charge%\x01"
+  fi
+}
+
+mem(){
+  mem="$(awk '/^Mem/ {print $3}' <(free -m))"
+  printf "%b" "\x04$mem\x01"
+}
+
+# CPU line courtesy Procyon:
+# https://bbs.archlinux.org/viewtopic.php?pid=874333#p874333
+cpu(){
+  read cpu a b c previdle rest < /proc/stat
+  prevtotal=$((a+b+c+previdle))
+  sleep 0.5
+  read cpu a b c idle rest < /proc/stat
+  total=$((a+b+c+idle))
+  cpu="$((100*( (total-prevtotal) - (idle-previdle) ) / (total-prevtotal) ))"
+  printf "%b" "\x05$cpu%\x01"
+}
+
+hdd(){
+  hd=( $(awk '
+    {i=$5} /mnt/c {a=i}; /root/ {b=i}; /home/ {c=i}; /media/ {d=i}
+    END {if (NR>=11) print a,b,c,d; else print a,b,c}
+           ' <(df -P | grep /mnt/c)) )
+  drives="${#hd[@]}"
+  if (( drives > 3 )); then
+    printf "%b " "\x08${hd[@]:0:3} \x06${hd[@]:3:1}\x01"
+  else
+    printf "%b " "\x08${hd[@]}\x01"
+  fi
+}
+
+eml(){
+  maildirs="$HOME/.mail/*/INBOX/new/"
+  ml="$(find $maildirs -type f | wc -l)"
+  if (( ml > 0 )); then
+    printf "%b" "\x03$ml\x01"
+  else
+    printf "0"
+  fi
+}
+
+pac(){
+  pup="$(pacman -Qqu | wc -l)"
+  if (( pup > 0 )); then
+    printf "%b" "\x05$pup\x01"
+  else
+    printf "0"
+  fi
+}
+
+ups(){
+  ups="$(wc -l < /tmp/aurupdates*)"
+  if (( ups > 0 )); then
+    printf "%b" "AUR \x05$ups\x01 "
+  fi
+}
+
+aur(){
+   aur="$(awk '$0 !~ /^No /' /tmp/aurphans* | wc -l)"
+   if (( aur > 0 )); then
+     printf "%b" "\x03∆\x01 "
+   fi
+}
+
+int(){
+  getent hosts cloudflare.com>/dev/null &&
+  printf "%b" "\x06ON\x01" || printf "%b" "\x03NO\x01"
+}
+
+dte(){
+  dte="$(date '+%a %d/%m/%y %H:%M')"
+  printf "%b" "\x02$dte"
+}
+
+dwm_weather() {
+    LOCATION=Amsterdam
+
+    printf "%b" "$SEP1"
+    if [ "$IDENTIFIER" = "unicode" ]; then
+        printf "%b" "$(curl -s wttr.in/$LOCATION?format=1)"
+    else
+        printf "%b" "\x04$(curl -s wttr.in/$LOCATION?format=1 | grep -o "[0-9].*")\x01"
+    fi
+    printf "%b\n" "$SEP2"
+}
+# Pipe to status bar
+xsetroot -name "WTR $(dwm_weather) | CPU $(cpu) MEM $(mem) | SSD $(hdd)\
+| PKG $(pac) $(ups)$(aur) | NET $(int) | $(dte) "
